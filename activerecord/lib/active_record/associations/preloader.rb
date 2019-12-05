@@ -143,7 +143,9 @@ module ActiveRecord
 
         def preloaders_for_reflection(reflection, records, scope)
           records.group_by { |record| record.association(reflection.name).klass }.map do |rhs_klass, rs|
-            preloader_for(reflection, rs).new(rhs_klass, rs, reflection, scope).run
+            loader = preloader_for(reflection, rs).new(rhs_klass, rs, reflection, scope)
+            loader.run self
+            loader
           end
         end
 
@@ -163,18 +165,10 @@ module ActiveRecord
             @reflection = reflection
           end
 
-          def run
-            self
-          end
+          def run(preloader); end
 
           def preloaded_records
-            @preloaded_records ||= records_by_owner.flat_map(&:last)
-          end
-
-          def records_by_owner
-            @records_by_owner ||= owners.each_with_object({}) do |owner, result|
-              result[owner] = Array(owner.association(reflection.name).target)
-            end
+            owners.flat_map { |owner| owner.association(reflection.name).target }
           end
 
           private
